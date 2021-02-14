@@ -71,6 +71,8 @@ public class PlayerRecipeTransferHandler implements IRecipeTransferHandler<Playe
 			craftingSlots.put(slot.slotNumber, slot);
 		}
 
+		boolean tooLarge = false;
+
 		IGuiItemStackGroup itemStackGroup = recipeLayout.getItemStacks();
 		int inputCount = 0;
 		{
@@ -83,8 +85,8 @@ public class PlayerRecipeTransferHandler implements IRecipeTransferHandler<Playe
 					if (!ingredient.getAllIngredients().isEmpty()) {
 						inputCount++;
 						if (badIndexes.contains(inputIndex)) {
-							String tooltipMessage = Translator.translateToLocal("jei.tooltip.error.recipe.transfer.too.large.player.inventory");
-							return handlerHelper.createUserErrorWithTooltip(tooltipMessage);
+							tooLarge = true;
+							break;
 						}
 					}
 					inputIndex++;
@@ -92,21 +94,27 @@ public class PlayerRecipeTransferHandler implements IRecipeTransferHandler<Playe
 			}
 		}
 
-		// compact the crafting grid into a 2x2 area
-		List<IGuiIngredient<ItemStack>> guiIngredients = new ArrayList<>();
-		for (IGuiIngredient<ItemStack> guiIngredient : itemStackGroup.getGuiIngredients().values()) {
-			if (guiIngredient.isInput()) {
-				guiIngredients.add(guiIngredient);
+		IGuiItemStackGroup playerInvItemStackGroup;
+
+		if(tooLarge) {
+			playerInvItemStackGroup = itemStackGroup;
+		} else {
+			// compact the crafting grid into a 2x2 area
+			List<IGuiIngredient<ItemStack>> guiIngredients = new ArrayList<>();
+			for (IGuiIngredient<ItemStack> guiIngredient : itemStackGroup.getGuiIngredients().values()) {
+				if (guiIngredient.isInput()) {
+					guiIngredients.add(guiIngredient);
+				}
 			}
-		}
-		IGuiItemStackGroup playerInvItemStackGroup = new GuiItemStackGroup(null, 0);
-		int[] playerGridIndexes = {0, 1, 3, 4};
-		for (int i = 0; i < 4; i++) {
-			int index = playerGridIndexes[i];
-			if (index < guiIngredients.size()) {
-				IGuiIngredient<ItemStack> ingredient = guiIngredients.get(index);
-				playerInvItemStackGroup.init(i, true, 0, 0);
-				playerInvItemStackGroup.set(i, ingredient.getAllIngredients());
+			playerInvItemStackGroup = new GuiItemStackGroup(null, 0);
+			int[] playerGridIndexes = {0, 1, 3, 4};
+			for (int i = 0; i < 4; i++) {
+				int index = playerGridIndexes[i];
+				if (index < guiIngredients.size()) {
+					IGuiIngredient<ItemStack> ingredient = guiIngredients.get(index);
+					playerInvItemStackGroup.init(i, true, 0, 0);
+					playerInvItemStackGroup.set(i, ingredient.getAllIngredients());
+				}
 			}
 		}
 
@@ -141,12 +149,18 @@ public class PlayerRecipeTransferHandler implements IRecipeTransferHandler<Playe
 			return handlerHelper.createUserErrorWithTooltip(message);
 		}
 
-		RecipeTransferUtil.MatchingItemsResult matchingItemsResult = RecipeTransferUtil.getMatchingItems(stackHelper, availableItemStacks, playerInvItemStackGroup.getGuiIngredients());
+		RecipeTransferUtil.MatchingItemsResult matchingItemsResult = RecipeTransferUtil.getMatchingItems(stackHelper, availableItemStacks, itemStackGroup.getGuiIngredients());
 
 		if (matchingItemsResult.missingItems.size() > 0) {
 			String message = Translator.translateToLocal("jei.tooltip.error.recipe.transfer.missing");
-			matchingItemsResult = RecipeTransferUtil.getMatchingItems(stackHelper, availableItemStacks, itemStackGroup.getGuiIngredients());
 			return handlerHelper.createUserErrorForSlots(message, matchingItemsResult.missingItems);
+		}
+
+			matchingItemsResult = RecipeTransferUtil.getMatchingItems(stackHelper, availableItemStacks, playerInvItemStackGroup.getGuiIngredients());
+
+		if(tooLarge) {
+			String tooltipMessage = Translator.translateToLocal("jei.tooltip.error.recipe.transfer.too.large.player.inventory");
+			return handlerHelper.createUserErrorWithTooltip(tooltipMessage);
 		}
 
 		List<Integer> craftingSlotIndexes = new ArrayList<>(craftingSlots.keySet());
