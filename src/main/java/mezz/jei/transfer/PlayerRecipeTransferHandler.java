@@ -71,7 +71,7 @@ public class PlayerRecipeTransferHandler implements IRecipeTransferHandler<Playe
 			craftingSlots.put(slot.slotNumber, slot);
 		}
 
-		boolean tooLarge = false;
+		boolean recipeSizeTooLarge = false;
 
 		IGuiItemStackGroup itemStackGroup = recipeLayout.getItemStacks();
 		int inputCount = 0;
@@ -85,7 +85,7 @@ public class PlayerRecipeTransferHandler implements IRecipeTransferHandler<Playe
 					if (!ingredient.getAllIngredients().isEmpty()) {
 						inputCount++;
 						if (badIndexes.contains(inputIndex)) {
-							tooLarge = true;
+							recipeSizeTooLarge = true;
 							break;
 						}
 					}
@@ -96,7 +96,7 @@ public class PlayerRecipeTransferHandler implements IRecipeTransferHandler<Playe
 
 		IGuiItemStackGroup playerInvItemStackGroup;
 
-		if(tooLarge) {
+		if(recipeSizeTooLarge) {
 			playerInvItemStackGroup = itemStackGroup;
 		} else {
 			// compact the crafting grid into a 2x2 area
@@ -143,12 +143,6 @@ public class PlayerRecipeTransferHandler implements IRecipeTransferHandler<Playe
 			}
 		}
 
-		// check if we have enough inventory space to shuffle items around to their final locations
-		if (filledCraftSlotCount - inputCount > emptySlotCount) {
-			String message = Translator.translateToLocal("jei.tooltip.error.recipe.transfer.inventory.full");
-			return handlerHelper.createUserErrorWithTooltip(message);
-		}
-
 		RecipeTransferUtil.MatchingItemsResult matchingItemsResult = RecipeTransferUtil.getMatchingItems(stackHelper, availableItemStacks, itemStackGroup.getGuiIngredients());
 
 		if (matchingItemsResult.missingItems.size() > 0) {
@@ -156,12 +150,18 @@ public class PlayerRecipeTransferHandler implements IRecipeTransferHandler<Playe
 			return handlerHelper.createUserErrorForSlots(message, matchingItemsResult.missingItems);
 		}
 
-			matchingItemsResult = RecipeTransferUtil.getMatchingItems(stackHelper, availableItemStacks, playerInvItemStackGroup.getGuiIngredients());
-
-		if(tooLarge) {
+		if(recipeSizeTooLarge) {
 			String tooltipMessage = Translator.translateToLocal("jei.tooltip.error.recipe.transfer.too.large.player.inventory");
 			return handlerHelper.createUserErrorWithTooltip(tooltipMessage);
 		}
+
+		// check if we have enough inventory space to shuffle items around to their final locations
+		if (filledCraftSlotCount - inputCount > emptySlotCount) {
+			String message = Translator.translateToLocal("jei.tooltip.error.recipe.transfer.inventory.full");
+			return handlerHelper.createUserErrorWithTooltip(message);
+		}
+
+		matchingItemsResult = RecipeTransferUtil.getMatchingItems(stackHelper, availableItemStacks, playerInvItemStackGroup.getGuiIngredients());
 
 		List<Integer> craftingSlotIndexes = new ArrayList<>(craftingSlots.keySet());
 		Collections.sort(craftingSlotIndexes);
